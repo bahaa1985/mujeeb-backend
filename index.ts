@@ -29,7 +29,7 @@ const FRONTEND_ORIGINS = [
 ];
 // app.use(cors())
 app.use(cors({
-  origin: (origin, callback) => {
+  origin: (origin:any, callback:any) => {
     if (!origin || FRONTEND_ORIGINS.includes(origin)) {
       callback(null, true);
     } else {

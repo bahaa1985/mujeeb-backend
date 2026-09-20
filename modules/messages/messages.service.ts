@@ -318,7 +318,7 @@ console.log("processWebhookMessageService fired with record:", record);
             title: "رسالة أوردر جديدة",
             body: message || "",
           },
-          tokens: fcmTokens.map(token => String(token)),
+          tokens: fcmTokens.map((token:string) => String(token)),
         };
 
         try {
