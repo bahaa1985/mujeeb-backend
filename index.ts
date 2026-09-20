@@ -43,29 +43,35 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(require('cookie-parser')())
 //ngrok public url
-async function forwardToApp() {
-	const forwarder = await ngrok.forward({
-		addr: "localhost:3000",
-		authtoken_from_env: true,
-		domain: "cotton-guidance-uncouple.ngrok-free.dev",
-	});
-	console.log(`Available at: ${forwarder.url()}`);
-}
-forwardToApp();
-// Cleanup function to disconnect ngrok on exit
-const cleanup = async () => {
-  try {
-    await ngrok.disconnect();
-    await ngrok.kill();
-  } catch (err) {
-    // ignore
+// خليه يتنفذ بس لو مش في بيئة الإنتاج
+if (process.env.NODE_ENV !== 'production') {
+  const ngrok = require('@ngrok/ngrok');
+  
+  async function forwardToApp() {
+    try {
+      const forwarder = await ngrok.forward({
+        addr: "localhost:3000",
+        authtoken_from_env: true,
+        domain: "cotton-guidance-uncouple.ngrok-free.dev",
+      });
+      console.log(`Available at: ${forwarder.url()}`);
+    } catch (err) {
+      console.log("Ngrok error: ", err);
+    }
   }
-  process.exit(0);
-};
+  forwardToApp();
 
-// الاستماع لإشارات إغلاق التطبيق
-process.on('SIGINT', cleanup);
-process.on('SIGTERM', cleanup);
+  const cleanup = async () => {
+    try {
+      await ngrok.disconnect();
+      await ngrok.kill();
+    } catch (err) {}
+    process.exit(0);
+  };
+
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+}
 
 // home route:
 app.get('/',authenticateToken, (req: any, res: any) => {
@@ -92,6 +98,6 @@ app.use('/logs',LOGS_ROUTER)
 app.use('/notifications', NOTIFICATION_ROUTER)
 
 const PORT = Number(process.env.PORT ?? 3000);
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server is running on port ${PORT}`);
 });
