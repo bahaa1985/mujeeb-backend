@@ -26,7 +26,8 @@ const FRONTEND_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:5175',
-  'www.mujeeb.org'
+  'https://www.mujeeb.org',
+  'https://mujeeb.org',
 ];
 // app.use(cors())
 app.use(cors({
