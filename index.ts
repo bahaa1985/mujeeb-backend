@@ -26,7 +26,7 @@ const FRONTEND_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:5175',
-  'https://mujeeb-ai.netlify.app'
+  'www.mujeeb.org'
 ];
 // app.use(cors())
 app.use(cors({

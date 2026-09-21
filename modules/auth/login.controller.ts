@@ -33,8 +33,8 @@ export const userLoginController = async (req: any, res: any) => {
         const token = generateToken(serializedUser)
         res.cookie('token', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            secure: true,
+            sameSite: 'none',
             path: '/',
             maxAge: 30 * 24 * 60 * 60 * 1000 // 30 يوم بالميللي ثانية,
         })
