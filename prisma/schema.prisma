@@ -130,7 +130,7 @@ model pharmacies {
   delivery             Boolean                @default(false)
   delivery_price Decimal @db.Decimal() @default(0.00)
   work_time            String                 @default("24 ساعة في اليوم 7 أيام في الأسبوع") @db.VarChar(50)
-  logo                 String?                @default("/public/logo.png") @db.VarChar
+  logo                 String?                @default("https://jypewluarjjsrkpicipv.supabase.co/storage/v1/object/public/avatars/ph_avatar.png") @db.VarChar
   is_active            Boolean                @default(true)
   created_at           DateTime               @default(now()) @db.Timestamptz(6)
   inventory            inventory[]
@@ -156,7 +156,7 @@ model users {
   username        String         @db.VarChar(50)
   password        String         @db.VarChar
   mobile          String         @unique @db.VarChar(13)
-  avatar          String?        @default("/public/avatar.png") @db.VarChar
+  avatar          String?        @default("https://jypewluarjjsrkpicipv.supabase.co/storage/v1/object/public/avatars/avatar.png") @db.VarChar
   created_at      DateTime       @default(now()) @db.Timestamptz(6)
   pharmacy_id     Int @db.Integer
   is_logging_in   Boolean        @default(false)
