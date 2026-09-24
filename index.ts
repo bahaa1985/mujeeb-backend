@@ -21,7 +21,8 @@ import { NOTIFICATION_ROUTER } from './modules/notifications/notification.route'
 
 const app = express();
 
-
+let arr:number[] = [4,5,1,4];
+arr.reduce((accumulator, currentValue) => accumulator + currentValue, 0);
 const FRONTEND_ORIGINS = [
   'http://localhost:5173',
   'http://localhost:5174',

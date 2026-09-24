@@ -64,25 +64,25 @@ export const getLogs = async (filter: LogFilter) => {
 
 const translations: Record<string, any> = {
   en: {
-    USER_LOGIN: { title: "Login Alert", body: "User {username} ({mobile}) signed in successfully" },
-    USER_LOGOUT: { title: "Logout Alert", body: "User {username} ({mobile}) signed out" },
-    AI_MODE_TOGGLED: { title: "AI Mode Changed", body: "AI mode has been updated by {username} ({mobile})" },
+    USER_LOGIN: { title: "Login Alert", body: "User {username} ({mobile}) signed in successfully at {pharmacy}" },
+    USER_LOGOUT: { title: "Logout Alert", body: "User {username} ({mobile}) signed out from {pharmacy}" },
+    AI_MODE_TOGGLED: { title: "AI Mode Changed", body: "AI mode has been updated by {username} ({mobile}) at {pharmacy}" },
     SUBSCRIPTION_RENEWED: { title: "Subscription Renewed", body: "Pharmacy subscription renewed successfully" },
     SUBSCRIPTION_SUSPENDED: { title: "Subscription Suspended", body: "Pharmacy subscription has been suspended" },
     ORDER_REQUEST: { title: "New Order", body: "New order request from {contactName} ({contactNumber}) has been received" },
-    INVENTORY_UPDATED: { title: "Inventory Update", body: "Inventory has been updated by {username}" },
+    INVENTORY_UPDATED: { title: "Inventory Update", body: "Inventory has been updated by {username} at {pharmacy}" },
     CREATE_NEW_USER: { title: "Security Alert", body: "A new user {username} was created" },
     APP_ERROR: { title: "System Error", body: "An application error occurred: {details}" },
     CREATE_EVOLUTION_INSTANCE: { title: "WhatsApp Connected", body: "A new WhatsApp instance was created for {username}" },
   },
   ar: {
-    USER_LOGIN: { title: "تنبيه دخول", body: "قام المستخدم {username} بتسجيل الدخول بنجاح" },
-    USER_LOGOUT: { title: "تنبيه خروج", body: "قام المستخدم {username} بتسجيل الخروج" },
-    AI_MODE_TOGGLED: { title: "تغيير وضع الذكاء الاصطناعي", body: "تم تحديث وضع الرد الآلي بواسطة {username}" },
+    USER_LOGIN: { title: "تنبيه دخول", body: "قام المستخدم {username} ({mobile}) بتسجيل الدخول إلى {pharmacy} بنجاح" },
+    USER_LOGOUT: { title: "تنبيه خروج", body: "قام المستخدم {username} ({mobile}) بتسجيل الخروج من {pharmacy}" },
+    AI_MODE_TOGGLED: { title: "تغيير وضع الذكاء الاصطناعي", body: "تم تحديث وضع الرد الآلي بواسطة {username} ({mobile}) في {pharmacy}" },
     SUBSCRIPTION_RENEWED: { title: "تجديد الاشتراك", body: "تم تجديد اشتراك الصيدلية بنجاح" },
     SUBSCRIPTION_SUSPENDED: { title: "إيقاف الاشتراك", body: "تم إيقاف اشتراك الصيدلية" },
     ORDER_REQUEST: { title: "طلب جديد", body: "تم استلام طلب جديد من {contactName} ({contactNumber})" },
-    INVENTORY_UPDATED: { title: "تحديث المخزون", body: "تم تحديث المخزون بواسطة {username}" },
+    INVENTORY_UPDATED: { title: "تحديث المخزون", body: "تم تحديث المخزون بواسطة {username} في {pharmacy}" },
     CREATE_NEW_USER: { title: "تنبيه أمني", body: "تم إنشاء مستخدم جديد: {username}" },
     APP_ERROR: { title: "خطأ في النظام", body: "حدث خطأ في التطبيق: {details}" },
     CREATE_EVOLUTION_INSTANCE: { title: "ربط واتساب", body: "تم إنشاء مثيل واتساب جديد للمستخدم {username}" },
@@ -110,6 +110,9 @@ export const logAndNotify = async (params: {
 
   // 1. Create System Log
   await createLog({ userId, pharmacyId: resolvedPharmacyId, action, metadata });
+
+  // Application errors are stored for diagnostics but are not user notifications.
+  if (action === "APP_ERROR") return;
 
   // 2. Determine Target Roles
   let targetRoles: TargetRole[] = [];
@@ -156,14 +159,19 @@ export const logAndNotify = async (params: {
       return; // No notification defined for this action
   }
 
-  const actor = ["USER_LOGIN", "USER_LOGOUT", "AI_MODE_TOGGLED"].includes(action)
+  const actor = ["USER_LOGIN", "USER_LOGOUT", "AI_MODE_TOGGLED","INVENTORY_UPDATED","CREATE_EVOLUTION_INSTANCE"].includes(action)
     ? await prismaClient.users.findUnique({
         where: { id: userId },
-        select: { username: true, mobile: true }
+          select: {
+            username: true,
+            mobile: true,
+            pharmacies: { select: { pharmacy_name: true } },
+          }
       })
     : null;
   const notificationUsername = actor?.username || username;
   const notificationMobile = actor?.mobile || metadata?.user_mobile || "";
+    const notificationPharmacy = actor?.pharmacies?.pharmacy_name || metadata?.pharmacy_name || "";
 
   // 3. Process Notifications for each role
   const t = translations[locale][action] || { title: action, body: JSON.stringify(metadata) };
@@ -171,6 +179,7 @@ export const logAndNotify = async (params: {
   const localizedBody = t.body
     .replace('{username}', notificationUsername)
     .replace('{mobile}', notificationMobile)
+    .replace('{pharmacy}', notificationPharmacy)
     .replace('{contactName}', metadata?.contact_name || metadata?.from || '')
     .replace('{contactNumber}', metadata?.contact_number || metadata?.from || '')
     .replace('{details}', typeof metadata === 'string' ? metadata : JSON.stringify(metadata));
