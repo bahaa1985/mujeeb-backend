@@ -37,6 +37,8 @@ export const uploadInventory = async (req: any, res: any) => {
       }
 
       const rows = body.rows as any[];
+      console.log("roes back",rows);
+      
       if (rows.length === 0) {
         return res.status(400).json({ success: false, message: 'No rows provided' });
       }
@@ -66,7 +68,7 @@ export const uploadInventory = async (req: any, res: any) => {
 
         };
       });
-      console.log(rowsToInsert[0])
+      // console.log(rowsToInsert[0])
             await prismaClient.$transaction([
         prismaClient.inventory.deleteMany({ where: { pharmacy_id: pharmacyId } }),
         prismaClient.inventory.createMany({ data: rowsToInsert })
