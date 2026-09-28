@@ -19,11 +19,12 @@ export class SubscriptionController {
   // 2. إنشاء اشتراك جديد
   async createSubscriptionController(req: Request, res: Response) {
     try {
-      const { pharmacy_id, plan_id, bill_due } = req.body;
+      const { pharmacy_id, plan_id } = req.body;
+      console.log("subscription body",req.body);
+      
       const subscription = await subscriptionService.createSubscription(
         pharmacy_id,
-        plan_id,
-        new Date(bill_due)
+        plan_id
       );
       return res.status(201).json({ success: true, data: subscription });
     } catch (error: any) {
@@ -83,5 +84,8 @@ export class SubscriptionController {
     } catch (error: any) {
       return res.status(500).json({ success: false, message: error.message });
     }
+  }
+  func(){
+    return 1;
   }
 }

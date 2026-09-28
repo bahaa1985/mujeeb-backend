@@ -9,7 +9,7 @@ export const getMessagesByPharmacyIdService = async (
 ) => {
   try {
     const messages = await prismaClient.messages.findMany({
-      where:{pharmacy_id: Number(pharmacyId)},
+      where:{pharmacy_id: 1},
       orderBy: { created_at: 'asc' },
     });
     return messages;

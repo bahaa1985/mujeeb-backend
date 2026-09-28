@@ -45,8 +45,17 @@ export class SubscriptionService {
   }
 
   // 2. إنشاء اشتراك جديد (التريجر في الداتابيز سيتولى إنهاء القديم وتصفير العدادات)
-  async createSubscription(pharmacyId: number, planId: number, billDue: Date) {
+  async createSubscription(pharmacyId: number, planId: number) {
     try {
+      const billDue = new Date();
+      if(planId === 4){
+      billDue.setDate(billDue.getDate() + 7);
+      }
+      else{
+      billDue.setMonth(billDue.getMonth() + 1);
+      }
+      console.log("billDue",billDue);
+
       return prismaClient.subscriptions.create({
         data: {
           pharmacy_id: pharmacyId,
