@@ -4,19 +4,7 @@ import { SubscriptionService } from './subscriptions.service';
 const subscriptionService = new SubscriptionService();
 
 export class SubscriptionController {
-  // 1. إنشاء أو تحديث خطة
-  async createPlanController(req: Request, res: Response) {
-    try {
-      const planId = req.params.id ? parseInt(req.params.id.toString()) : undefined;
-      const { name, price, messages_limit } = req.body;
-      const plan = await subscriptionService.upsertPlan(planId, { name, price, messages_limit });
-      return res.status(200).json({ success: true, data: plan });
-    } catch (error: any) {
-      return res.status(500).json({ success: false, message: error.message });
-    }
-  }
-
-  // 2. إنشاء اشتراك جديد
+  // 1. إنشاء اشتراك جديد
   async createSubscriptionController(req: Request, res: Response) {
     try {
       const { pharmacy_id, plan_id } = req.body;

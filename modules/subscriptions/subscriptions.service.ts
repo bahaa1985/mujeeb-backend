@@ -28,33 +28,17 @@ export class SubscriptionService {
     }).catch((loggingError) => console.error('Failed to log subscription error:', loggingError));
   }
 
-  // 1. إنشاء أو تحديث الخطط (Plans)
-  async upsertPlan(id: number | undefined, data: { name: string; price: number; messages_limit: number }) {
-    try {
-      if (id) {
-        return prismaClient.plans.update({
-          where: { id },
-          data,
-        });
-      }
-      return prismaClient.plans.create({ data });
-    } catch (error: any) {
-      this.reportError(error, 'Error saving subscription plan');
-      throw error;
-    }
-  }
-
-  // 2. إنشاء اشتراك جديد (التريجر في الداتابيز سيتولى إنهاء القديم وتصفير العدادات)
+  // 1. إنشاء اشتراك جديد (التريجر في الداتابيز سيتولى إنهاء القديم وتصفير العدادات)
   async createSubscription(pharmacyId: number, planId: number) {
     try {
       const billDue = new Date();
-      if(planId === 4){
+      if(planId === 1){
       billDue.setDate(billDue.getDate() + 7);
       }
       else{
       billDue.setMonth(billDue.getMonth() + 1);
       }
-      console.log("billDue",billDue);
+      // console.log("billDue",billDue);
 
       return prismaClient.subscriptions.create({
         data: {
@@ -63,7 +47,7 @@ export class SubscriptionService {
           bill_due: billDue,
           subscription_state: 'ACTIVE',
           messages_used: 0,
-          images_count: 0,
+          images_used: 0,
           next_month_paid: false,
         },
       });
@@ -88,7 +72,7 @@ export class SubscriptionService {
         pharmacy_plan_id: sub.id,
         billing_month: sub.bill_due,
         messages_used: sub.messages_used,
-        images_count: sub.images_count,
+        images_used: sub.images_used,
         amount_paid: 0, // يمكن تعديلها حسب نظام الدفع لديك
         discount: 0,
       },
@@ -100,7 +84,7 @@ export class SubscriptionService {
         data: {
           bill_due: new Date(new Date(sub.bill_due).setMonth(new Date(sub.bill_due).getMonth() + 1)),
           messages_used: 0,
-          images_count: 0,
+          images_used: 0,
           next_month_paid: false,
           subscription_state: 'ACTIVE',
         },

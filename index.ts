@@ -16,6 +16,7 @@ import { CONTACTS_ROUTER } from './modules/contacts/contacts.route';
 import { INVENTORY_ROUTER } from './modules/inventory/inventory.route';
 import { EVOLUTION_INSTANCE_ROUTER } from './modules/evolution_instance/instance.route';
 import { SUBSCRIPTION_ROUTER } from './modules/subscriptions/subscriptions.route';
+import { PLANS_ROUTER } from './modules/plans/plans.route';
 import { LOGS_ROUTER } from './modules/logs/log.route';
 import { NOTIFICATION_ROUTER } from './modules/notifications/notification.route';
 
@@ -97,6 +98,7 @@ app.use('/contacts', CONTACTS_ROUTER)
 app.use('/inventory', INVENTORY_ROUTER)
 app.use('/evolution', EVOLUTION_INSTANCE_ROUTER)
 app.use('/subscriptions', SUBSCRIPTION_ROUTER)
+app.use('/plans', PLANS_ROUTER)
 app.use('/logs',LOGS_ROUTER)
 app.use('/notifications', NOTIFICATION_ROUTER)
 
