@@ -57,11 +57,11 @@ export class SubscriptionService {
     }
   }
 
-  // 3. تجديد الاشتراك يدوياً وأرشفة الشهر القديم
-  async renewSubscription(subscriptionId: number) {
+  // 2. تجديد الاشتراك يدوياً وأرشفة الشهر القديم
+  async renewSubscription(subscriptionId: number, pharmacyId?: number) {
     try {
-      const sub = await prismaClient.subscriptions.findUnique({
-        where: { id: subscriptionId },
+      const sub = await prismaClient.subscriptions.findFirst({
+        where: { id: subscriptionId, ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}) },
       });
 
       if (!sub) throw new Error('Subscription not found');
@@ -80,7 +80,7 @@ export class SubscriptionService {
 
     // تحديث تاريخ الاستحقاق وتصفير العدادات وتفعيل الاشتراك
       return prismaClient.subscriptions.update({
-        where: { id: subscriptionId },
+        where: { id: subscriptionId, ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}) },
         data: {
           bill_due: new Date(new Date(sub.bill_due).setMonth(new Date(sub.bill_due).getMonth() + 1)),
           messages_used: 0,
@@ -95,11 +95,11 @@ export class SubscriptionService {
     }
   }
 
-  // 4. تعليق الاشتراك
-  async suspendSubscription(subscriptionId: number) {
+  // 3. تعليق الاشتراك
+  async suspendSubscription(subscriptionId: number, pharmacyId?: number) {
     try {
       return prismaClient.subscriptions.update({
-        where: { id: subscriptionId },
+        where: { id: subscriptionId, ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}) },
         data: { subscription_state: 'SUSPENDED' },
       });
     } catch (error: any) {
@@ -108,11 +108,11 @@ export class SubscriptionService {
     }
   }
 
-  // 5. تفعيل الاشتراك
-  async activateSubscription(subscriptionId: number) {
+  // 4. تفعيل الاشتراك
+  async activateSubscription(subscriptionId: number, pharmacyId?: number) {
     try {
       return prismaClient.subscriptions.update({
-        where: { id: subscriptionId },
+        where: { id: subscriptionId, ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}) },
         data: { subscription_state: 'ACTIVE' },
       });
     } catch (error: any) {
@@ -121,18 +121,18 @@ export class SubscriptionService {
     }
   }
 
-  // 6. تبديل حالة دفع الشهر القادم
-  async toggleNextMonthPaid(subscriptionId: number) {
+  // 5. تبديل حالة دفع الشهر القادم
+  async toggleNextMonthPaid(subscriptionId: number, pharmacyId?: number) {
     try {
       const sub = await prismaClient.subscriptions.findUnique({
-        where: { id: subscriptionId },
+        where: { id: subscriptionId, ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}) },
         select: { next_month_paid: true }
       });
 
       if (!sub) throw new Error('Subscription not found');
 
       return prismaClient.subscriptions.update({
-        where: { id: subscriptionId },
+        where: { id: subscriptionId, ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}) },
         data: { next_month_paid: !sub.next_month_paid },
       });
     } catch (error: any) {
@@ -141,10 +141,11 @@ export class SubscriptionService {
     }
   }
 
-  // 7. استعراض كل الاشتراكات مرتبة من الأحدث
-  async listAllSubscriptions() {
+  // 6. استعراض كل الاشتراكات مرتبة من الأحدث
+  async listAllSubscriptions(pharmacyId?: number) {
     try {
       return prismaClient.subscriptions.findMany({
+        where: pharmacyId ? { pharmacy_id: pharmacyId } : undefined,
         orderBy: { subscription_start: 'desc' },
         include: {
           pharmacies: true,

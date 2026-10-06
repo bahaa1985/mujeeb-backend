@@ -1,11 +1,18 @@
 import { createEvolutionInstanceService, getPairingCodeEvolutionService, updateEvolutionInstanceStatusService, setWebhookEvolutionService, getConnectionStateService } from '../evolution_instance/instance.service'
+import { prismaClient } from '../../utils/prisma-adapter'
 
 import express from 'express'
 
 export const EVOLUTION_INSTANCE_ROUTER = express.Router()
 
 export const createInstanceController = async (req: any, res: any) => {
-    const { user_id,instance_name,mobile } = req.body
+    const user_id = Number(req.user?.role_id) === 1 ? Number(req.body.user_id || req.user.id) : Number(req.user?.id)
+    const { instance_name } = req.body
+    const user = Number(req.user?.role_id) === 1
+        ? await prismaClient.users.findUnique({ where: { id: user_id } })
+        : req.user
+    const mobile = Number(req.user?.role_id) === 1 ? req.body.mobile || user?.mobile : user?.mobile
+    if (!user || !instance_name || !mobile) return res.status(400).json({ message: 'Invalid instance details' })
     try {
         const result = await createEvolutionInstanceService(user_id,instance_name,mobile)
         await setWebhookEvolutionService(instance_name)
@@ -17,6 +24,14 @@ export const createInstanceController = async (req: any, res: any) => {
 
 export const getPairingCodeController = async (req: any, res: any) => {
     const { instance_name } = req.query
+    const owner = await prismaClient.users.findFirst({
+        where: {
+            instance_name,
+            ...(Number(req.user?.role_id) === 1 ? {} : { id: Number(req.user?.id), pharmacy_id: Number(req.user?.pharmacy_id) }),
+        },
+        select: { id: true },
+    })
+    if (!owner) return res.status(403).json({ message: 'Forbidden' })
     try {
         const result = await getPairingCodeEvolutionService(instance_name as string)
         res.status(200).json(result)
@@ -46,6 +61,14 @@ export const getConnectionStateController = async (req: any, res: any) => {
     if(!instance_name || typeof instance_name !== 'string' || instance_name === undefined || instance_name.trim() === '') {
         return res.status(400).json({ message: "instance_name query parameter is required and must be a string" })
     }
+    const owner = await prismaClient.users.findFirst({
+        where: {
+            instance_name,
+            ...(Number(req.user?.role_id) === 1 ? {} : { id: Number(req.user?.id), pharmacy_id: Number(req.user?.pharmacy_id) }),
+        },
+        select: { id: true },
+    })
+    if (!owner) return res.status(403).json({ message: 'Forbidden' })
     try {
         const state = await getConnectionStateService(instance_name as string)
         res.status(200).json({ state })

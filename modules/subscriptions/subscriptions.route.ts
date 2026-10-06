@@ -1,12 +1,10 @@
 import { Router } from 'express';
 import { SubscriptionController } from './subscriptions.controller';
+import { authenticateToken } from '../../middleware/authenticateToken';
 
 const controller = new SubscriptionController();
 export const SUBSCRIPTION_ROUTER = Router();
-
-// مسارات الخطط (Plans)
-SUBSCRIPTION_ROUTER.put('/plans/:id', controller.createPlanController);
-SUBSCRIPTION_ROUTER.post('/plans', controller.createPlanController);
+SUBSCRIPTION_ROUTER.use(authenticateToken);
 
 // مسارات الاشتراكات (Subscriptions)
 SUBSCRIPTION_ROUTER.post('/create', controller.createSubscriptionController);

@@ -8,6 +8,7 @@ const serializePharmacy = (pharmacy: any) => {
 }
 
 export const createPharamcyController = async (req: any, res: any) => {
+    if (Number(req.user?.role_id) !== 1) return res.status(403).json({ error: 'Forbidden' });
     const { pharmacy_name, pharmacy_address,work_time,delivery,delivery_price,logo } = req.body
     try {
         const newPharmacy = await createPharmacyService(pharmacy_name, pharmacy_address,work_time,delivery,delivery_price,logo)
@@ -20,6 +21,10 @@ export const createPharamcyController = async (req: any, res: any) => {
 
 export const getAllPharmaciesController = async (req: any, res: any) => {
     try {
+        if (Number(req.user?.role_id) !== 1) {
+            const pharmacy = await getPharmacyByIdService(Number(req.user?.pharmacy_id));
+            return res.status(200).json(pharmacy ? [serializePharmacy(pharmacy)] : []);
+        }
         const pharmacies = await getAllPharmaciesService()
         res.status(201).json(pharmacies.map(serializePharmacy))
     }
@@ -29,7 +34,7 @@ export const getAllPharmaciesController = async (req: any, res: any) => {
 }
 
 export const getPharmacyByIdController = async (req: any, res: any) => {
-    const { id } = req.params
+    const id = Number(req.user?.role_id) === 1 ? Number(req.params.id) : Number(req.user?.pharmacy_id)
     try {
         const pharmacy = await getPharmacyByIdService(Number(id))
         res.status(201).json(serializePharmacy(pharmacy))
@@ -40,7 +45,10 @@ export const getPharmacyByIdController = async (req: any, res: any) => {
 }
 
 export const updatePharmacyController = async (req: any, res: any) => {
-    const { id } = req.params
+    if (Number(req.user?.role_id) !== 1 && Number(req.params.id) !== Number(req.user?.pharmacy_id)) {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+    const id = Number(req.user?.role_id) === 1 ? req.params.id : req.user.pharmacy_id
     const { pharmacy_name, pharmacy_address,work_time,delivery,delivery_price,logo } = req.body
     try {
         await updatePharmacyService(id, pharmacy_name, pharmacy_address,work_time,delivery,logo,delivery_price)

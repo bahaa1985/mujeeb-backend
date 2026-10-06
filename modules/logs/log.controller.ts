@@ -4,9 +4,13 @@ import * as logService from './log.service';
 export const getLogs = async (req: Request, res: Response) => {
   try {
     const { pharmacyId, userId, action, page, limit } = req.query;
+    const authenticatedUser = (req as any).user;
+    const tenantPharmacyId = Number(authenticatedUser.role_id) === 1
+      ? Number(pharmacyId) || undefined
+      : Number(authenticatedUser.pharmacy_id);
 
     const logs = await logService.getLogs({
-      pharmacyId: Number(pharmacyId) || undefined,
+      pharmacyId: tenantPharmacyId,
       userId: Number(userId),
       action: action as string,
       page: page ? parseInt(page as string) : 1,

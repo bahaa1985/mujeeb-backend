@@ -1,12 +1,14 @@
 import { createUserController, updateUserController, getAllUsersController, deactivateUserController, updateUserFCMTokenController } from "./user.controller";
 import express from "express";
 import bodyParser from "body-parser";
+import { authenticateToken } from "../../middleware/authenticateToken";
 
 
 const app = express()
 app.use(bodyParser.json())
 
 export const USER_ROUTER = express.Router()
+USER_ROUTER.use(authenticateToken)
 
 USER_ROUTER.post('/new',bodyParser.urlencoded({ extended: true }), createUserController)
 USER_ROUTER.patch('/update/:id',bodyParser.urlencoded({ extended: true }), updateUserController)

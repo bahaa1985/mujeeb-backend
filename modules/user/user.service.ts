@@ -35,14 +35,14 @@ export const createUserService = async (username: string, password:string, mobil
         }
     }
 
-export const updateUserService = async (userId: number, updateData: any) => {
+export const updateUserService = async (userId: number, updateData: any, pharmacyId?: number) => {
     try {
         if (updateData.password?.length >=8) {
             const saltRounds = 10;
             updateData.password = await bcrypt.hash(updateData.password as string, saltRounds);
         }
         const updatedUser = await prismaClient.users.update({
-            where: { id: Number(userId) },
+            where: { id: Number(userId), ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}) },
             data: updateData,
         });
         return updatedUser;
@@ -78,10 +78,10 @@ export const getAllUsersService = async (pharmacyId:number)=>{
     }
 }
 
-export const deactivateUserService = async (userId: number) => {
+export const deactivateUserService = async (userId: number, pharmacyId?: number) => {
     try{
         const user = await prismaClient.users.update({
-            where :{id :userId},
+            where: { id: userId, ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}) },
             data:{is_active:false}
         })
         return user

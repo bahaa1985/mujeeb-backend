@@ -9,7 +9,7 @@ export const getMessagesByPharmacyIdService = async (
 ) => {
   try {
     const messages = await prismaClient.messages.findMany({
-      where:{pharmacy_id: 1},
+      where: { pharmacy_id: Number(pharmacyId) },
       orderBy: { created_at: 'asc' },
     });
     return messages;
@@ -28,12 +28,14 @@ export const getMessagesByPharmacyIdService = async (
 export const getMessagesByUserNumberService = async (
   userNumber: string,
   contactPhone?: string,
+  pharmacyId?: number,
 ) => {
   try {
     if (!contactPhone) return [];
     const messages = await prismaClient.messages.findMany({
       where:{
         AND:{
+          ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}),
           OR: [
             { from_number: contactPhone.trim() ,to_number: userNumber.trim() },
             {from_number:userNumber.trim(),to_number:contactPhone.trim()}
@@ -55,12 +57,13 @@ export const getMessagesByUserNumberService = async (
   }
 };
 
-export const getOrderMessageCountByUserMobileService = async (mobile: string) => {
+export const getOrderMessageCountByUserMobileService = async (mobile: string, pharmacyId?: number) => {
   try {
     return await prismaClient.messages.count({
       where: {
         message_type: 11,
         to_number: mobile.trim(),
+        ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}),
       },
     });
   } catch (error: any) {
@@ -105,11 +108,12 @@ export const getOrderMessageCountByPharmacyService = async (pharmacyId: number) 
   }
 };
 
-export const getUserMessagesCount = async (userNumber: string) => {
+export const getUserMessagesCount = async (userNumber: string, pharmacyId?: number) => {
   try {
     const count = await prismaClient.messages.count({
       where: {
         from_number: userNumber.trim(),
+        ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}),
         OR: 
           [
           { to_number: userNumber.trim() }],
@@ -187,7 +191,10 @@ export const createMessageService = async ({
     // Check if message_type is 11 (Order Request)
     if (Number(message_type) === 11) {
       const contact = await prismaClient.contacts.findFirst({
-        where: { contact_mobile: fromNumber },
+        where: {
+          contact_mobile: fromNumber,
+          users: { is: { pharmacy_id: pharmacyId } },
+        },
         select: { contact_name: true, contact_mobile: true }
       });
 
@@ -219,6 +226,7 @@ export const createMessageService = async ({
 
 export const updateMessageService = async (
   id: bigint,
+  pharmacyId: number | undefined,
   updateData: Partial<{
     message: string | null;
     image_url: string | null;
@@ -226,7 +234,7 @@ export const updateMessageService = async (
 ) => {
   try {
     const updatedMessage = await prismaClient.messages.update({
-      where: { id },
+      where: { id, ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}) },
       data: updateData,
     });
         return updatedMessage;
@@ -242,9 +250,9 @@ export const updateMessageService = async (
   }
 };
 
-export const deleteMessageService = async (id: bigint) => {
+export const deleteMessageService = async (id: bigint, pharmacyId: number | undefined) => {
   try {
-        return prismaClient.messages.delete({ where: { id } });
+        return prismaClient.messages.delete({ where: { id, ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}) } });
   } catch (error: any) {
     console.error("Error deleting message:", error);
     logAndNotify({
@@ -305,7 +313,7 @@ console.log("processWebhookMessageService fired with record:", record);
         await prismaClient.notification.create({
           data: {
             user_id: targetUser.id,
-            pharmacy_id: pharmacy_id ,
+            pharmacy_id: targetUser.pharmacy_id,
             type: NotificationType.ORDER_REQUEST,
             target_role: TargetRole.USER,
             title: "رسالة جديدة",

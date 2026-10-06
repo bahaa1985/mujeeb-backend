@@ -22,6 +22,7 @@ MESSAGES_ROUTER.post('/webhook', handleWebhookController);
 MESSAGES_ROUTER.use(authenticateToken);
 
 MESSAGES_ROUTER.get('/user/:userNumber', getMessagesByUserNumberController);
+MESSAGES_ROUTER.get('/pharmacy', getMessagesByPharmacyIdController);
 MESSAGES_ROUTER.get('/pharmacy/:pharmacyId', getMessagesByPharmacyIdController);
 MESSAGES_ROUTER.get('/count/user/:userNumber', getUserMessagesCountController);
 MESSAGES_ROUTER.get('/count/pharmacy/:pharmacyId', getPharmacyMessagesCountController);
