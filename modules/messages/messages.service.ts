@@ -26,30 +26,37 @@ export const getMessagesByPharmacyIdService = async (
 };
 
 export const getMessagesByUserNumberService = async (
-  userNumber: string,
-  contactPhone?: string,
-  pharmacyId?: number,
+  pharmacyId: number,
+  contactNumber: string,
+  cursorId?: string,
+  limit: number = 20,
 ) => {
   try {
-    if (!contactPhone) return [];
+    const take = limit + 1;
     const messages = await prismaClient.messages.findMany({
-      where:{
-        AND:{
-          ...(pharmacyId ? { pharmacy_id: pharmacyId } : {}),
-          OR: [
-            { from_number: contactPhone.trim() ,to_number: userNumber.trim() },
-            {from_number:userNumber.trim(),to_number:contactPhone.trim()}
-          ],
-        }
+      where: {
+        pharmacy_id: pharmacyId,
+        OR: [
+          { from_number: contactNumber.trim() },
+          { to_number: contactNumber.trim() },
+        ],
       },
-      orderBy: { created_at: 'asc' },
+      ...(cursorId ? { cursor: { id: BigInt(cursorId) }, skip: 1 } : {}),
+      take,
+      orderBy: { created_at: 'desc' },
     });
-    return messages;
+
+    const hasMore = messages.length > limit;
+    const data = hasMore ? messages.slice(0, limit) : messages;
+    return {
+      data,
+      nextCursor: hasMore && data.length > 0 ? data[data.length - 1].id.toString() : null,
+    };
   } catch (error: any) {
     console.error("Error fetching messages by user number:", error);
     logAndNotify({
         userId: 0,
-        pharmacyId: null,
+        pharmacyId,
         action: "APP_ERROR",
         metadata: { error_title: "Error fetching user messages", error: error.message, stack: error.stack, context: "getMessagesByUserNumberService" }
     }).catch(e => console.error(e));

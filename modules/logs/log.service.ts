@@ -3,7 +3,7 @@ import { TargetRole, NotificationType } from '@prisma/client';
 import { sendPushNotification } from '../../utils/notificationService';
 
 export interface LogFilter {
-  pharmacyId?: number;
+  pharmacyId: number;
   userId?: number;
   action?: string;
   page?: number;
@@ -30,8 +30,7 @@ export const getLogs = async (filter: LogFilter) => {
   const { pharmacyId, userId, action, page = 1, limit = 20 } = filter;
   const skip = (page - 1) * limit;
 
-  const where: any = {};
-  if (pharmacyId) where.pharmacy_id = pharmacyId;
+  const where: any = { pharmacy_id: pharmacyId };
   if (userId) where.user_id = userId;
   if (action) where.action = action;
 
@@ -54,6 +53,7 @@ export const getLogs = async (filter: LogFilter) => {
       total,
       page,
       lastPage: Math.ceil(total / limit),
+      limit,
     },
   };
 };

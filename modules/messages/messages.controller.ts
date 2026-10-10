@@ -51,12 +51,33 @@ export const getMessagesByPharmacyIdController = async (req: any, res: any) => {
 };
 
 export const getMessagesByUserNumberController = async (req: any, res: any) => {
-  const { userNumber } = req.params;
-  const contactPhone = req.query.contactPhone as string | undefined;
+  const contactNumber = (req.query.contactNumber || req.query.contactPhone) as string | undefined;
+  const authenticatedUser = req.user;
+  const pharmacyId = Number(authenticatedUser?.role_id) === 1
+    ? Number(req.query.pharmacyId)
+    : Number(authenticatedUser?.pharmacy_id);
+  const cursorId = req.query.cursorId as string | undefined;
+  const limit = req.query.limit === undefined ? 20 : Number(req.query.limit);
+
+  if (!Number.isInteger(pharmacyId) || pharmacyId <= 0) {
+    return res.status(400).json({ message: "Valid pharmacy ID is required" });
+  }
+  if (!contactNumber?.trim()) {
+    return res.status(400).json({ message: "Contact number is required" });
+  }
+  if (!Number.isInteger(limit) || limit <= 0) {
+    return res.status(400).json({ message: "Limit must be a positive integer" });
+  }
+  if (cursorId !== undefined && (!/^\d+$/.test(cursorId) || BigInt(cursorId) <= 0n)) {
+    return res.status(400).json({ message: "Cursor ID must be a positive integer" });
+  }
+
   try {
-    const pharmacyId = Number(req.user?.role_id) === 1 ? undefined : Number(req.user?.pharmacy_id);
-    const messages = await getMessagesByUserNumberService(userNumber, contactPhone, pharmacyId);
-    res.status(200).json(messages.map(serializeMessage));
+    const result = await getMessagesByUserNumberService(pharmacyId, contactNumber, cursorId, limit);
+    res.status(200).json({
+      data: result.data.map(serializeMessage),
+      nextCursor: result.nextCursor,
+    });
   } catch (error) {
     res.status(500).json({ message: "Error fetching messages", error });
   }

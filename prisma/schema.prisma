@@ -97,6 +97,9 @@ model messages {
   message_type      Int
   message_types     message_types @relation(fields: [message_type], references: [id], onDelete: NoAction, onUpdate: NoAction)
   pharmacies        pharmacies    @relation(fields: [pharmacy_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([pharmacy_id, from_number, created_at(sort: Desc)])
+  @@index([pharmacy_id, to_number, created_at(sort: Desc)])
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -183,6 +186,7 @@ model blocked_contacts {
   contact_number       String    @id @db.VarChar
   ten_minutes_messages Int?
   daily_messages       Int?
+  pharmacy_id Int?
   blocked              Boolean   @default(false)
   blocked_until        DateTime? @db.Timestamptz(6)
   alerted              Boolean   @default(false)
