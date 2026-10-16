@@ -2,8 +2,9 @@ import { createUserService, updateUserService, getAllUsersService, deactivateUse
 
 // Helper function to convert bigint to string for JSON serialization
 const serializeUser = (user: any) => {
+    const { password: _password, fcm_token: _fcmToken, ...safeUser } = user;
     return {
-        ...user,
+        ...safeUser,
         id: Number(user.id),
         role_id: Number(user.role_id),
         pharmacy_id: Number(user.pharmacy_id)
@@ -12,6 +13,10 @@ const serializeUser = (user: any) => {
 
 export const createUserController = async (req: any, res: any) => {
     const { username, password, mobile, role_id } = req.body
+    const requesterRoleId = Number(req.user?.role_id);
+    if (requesterRoleId === 3 || (requesterRoleId === 2 && Number(role_id) !== 3)) {
+        return res.status(403).json({ message: 'Forbidden' });
+    }
     if (Number(req.user?.role_id) !== 1 && Number(role_id) === 1) {
         return res.status(403).json({ message: 'Forbidden' });
     }
@@ -30,6 +35,12 @@ export const createUserController = async (req: any, res: any) => {
 export const updateUserController = async (req: any, res: any) => {
     const { id } = req.params
     const { username, password, mobile, role_id, is_active, ai_mode, avatar } = req.body
+    const requesterRoleId = Number(req.user?.role_id);
+    if (requesterRoleId === 3) {
+        if (Number(id) !== Number(req.user?.id) || role_id !== undefined || is_active !== undefined || req.body.pharmacy_id !== undefined) {
+            return res.status(403).json({ message: 'Forbidden' });
+        }
+    }
     const pharmacyId = Number(req.user?.role_id) === 1 ? undefined : Number(req.user?.pharmacy_id)
     const updateData: any = {}
     if (username) updateData.username = username
@@ -56,6 +67,9 @@ export const updateUserController = async (req: any, res: any) => {
 }
 
 export const getAllUsersController = async (req: any, res: any) => {
+    if (Number(req.user?.role_id) === 3) {
+        return res.status(403).json({ message: 'Forbidden' });
+    }
     const pharmacyId = Number(req.user?.role_id) === 1
         ? Number(req.params.pharmacyId || req.user?.pharmacy_id)
         : Number(req.user?.pharmacy_id)
@@ -69,6 +83,9 @@ export const getAllUsersController = async (req: any, res: any) => {
 }
 
 export const deactivateUserController = async (req: any, res: any) => {
+    if (Number(req.user?.role_id) === 3) {
+        return res.status(403).json({ message: 'Forbidden' });
+    }
     const { id } = req.params
     try {
         const pharmacyId = Number(req.user?.role_id) === 1 ? undefined : Number(req.user?.pharmacy_id)

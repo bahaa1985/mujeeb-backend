@@ -147,6 +147,8 @@ model users {
   fcm_token       String[]       @default([])
   instance_status String?        @db.VarChar
   role_id         Int
+  failed_attempts Int       @default(0)
+  lockout_until   DateTime? @db.Timestamptz(6)
   contacts        contacts[]
   notifications   notification[]
   pharmacies      pharmacies     @relation(fields: [pharmacy_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -247,6 +249,7 @@ enum NotificationType {
   INVENTORY_UPDATED
   NEW_USER
   NEW_INSTANCE
+  AMBIGUOUS_MESSAGE
 }
 
 enum TargetRole {

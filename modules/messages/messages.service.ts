@@ -1,7 +1,7 @@
 import { prismaClient } from "../../utils/prisma-adapter";
 import {sendTextMessage} from "./evolutionSendTextMessage"
 import { logAndNotify } from "../logs/log.service";
-import { messaging } from "../../utils/firebase";
+import { sendPushToTokens } from "../../utils/sendPushToTokens";
 import { NotificationType, TargetRole } from "@prisma/client";
 
 export const getMessagesByPharmacyIdService = async (
@@ -290,15 +290,59 @@ export const checkOrderMessageService = async ({
     });
     return { success: true };
   } catch (error: any) {
-    console.error("Error in checkOrderMessageService:", error);
+    // console.error("Error in checkOrderMessageService:", error);
+    throw error;
+  }
+};
+
+export const checkAmbigiousMessageService = async ({
+  pharmacyId,
+  fromNumber,
+  message,
+}: {
+  pharmacyId: number;
+  fromNumber: string;
+  message?: string;
+}) => {
+  try {
+    await logAndNotify({
+      userId: 0,
+      pharmacyId: pharmacyId,
+      action: "AMBIGIUOS_MESSAGE",
+      metadata: { from: fromNumber, message: message || "New Ambiguous Message" },
+    });
+    return { success: true };
+  } catch (error: any) {
+    // console.error("Error in checkAmbigiousMessageService:", error);
     throw error;
   }
 };
 
 export const processWebhookMessageService = async (record: any) => {
   try {
-    const { pharmacy_id, message, id, to_number, message_type } = record;
-console.log("processWebhookMessageService fired with record:", record);
+    const { pharmacy_id, message, to_number } = record;
+    const messageType = Number(record.message_type);
+// console.log("processWebhookMessageService fired with record:", record);
+    if ([1, 2, 3, 11].includes(messageType) && Number.isInteger(Number(pharmacy_id)) && Number(pharmacy_id) > 0) {
+      const subscription = await prismaClient.subscriptions.findFirst({
+        where: { pharmacy_id: Number(pharmacy_id) },
+        orderBy: [{ subscription_start: "desc" }, { id: "desc" }],
+        select: { id: true, subscription_state: true },
+      });
+
+      if (subscription?.subscription_state === "SUSPENDED") {
+        await logAndNotify({
+          userId: 0,
+          pharmacyId: Number(pharmacy_id),
+          action: "SUBSCRIPTION_SUSPENDED",
+          metadata: {
+            subscription_id: subscription.id,
+            message_type: messageType,
+          },
+        });
+      }
+    }
+
     // Check if the message is an order request (message_type == 11)
     // Even if we process all messages, maybe we only want to notify for order request?
     // Based on the prompt: "process FCM notifications for order messages based on the attached files."
@@ -312,35 +356,36 @@ console.log("processWebhookMessageService fired with record:", record);
       where: { mobile: to_number },
     });
 
-    if (targetUser && targetUser.is_active && targetUser.fcm_token && targetUser.fcm_token.length > 0 && message_type === 11) {
+    if (targetUser && targetUser.is_active && targetUser.fcm_token && targetUser.fcm_token.length > 0 && (messageType === 11 || messageType === 13)) {
       const fcmTokens = Array.isArray(targetUser.fcm_token) ? targetUser.fcm_token : [];
 
       if (fcmTokens.length > 0) {
+        const isAmbiguousMessage = messageType === 13;
+        const notificationTitle = isAmbiguousMessage ? "روشتة او صورة غير واضحة" : "رسالة جديدة";
+
         // Create an internal notification record in the database
         await prismaClient.notification.create({
           data: {
             user_id: targetUser.id,
             pharmacy_id: targetUser.pharmacy_id,
-            type: NotificationType.ORDER_REQUEST,
+            type: isAmbiguousMessage ? NotificationType.AMBIGUOUS_MESSAGE : NotificationType.ORDER_REQUEST,
             target_role: TargetRole.USER,
-            title: "رسالة جديدة",
+            title: notificationTitle,
             body: message || "",
           }
         });
 
-        const fcmMessage = {
-          notification: {
-            title: "رسالة أوردر جديدة",
-            body: message || "",
-          },
-          tokens: fcmTokens.map((token:string) => String(token)),
-        };
-
         try {
-          const response = await messaging.sendEachForMulticast(fcmMessage);
-          console.log(`Webhook Notification sent: ${response.successCount} successes, ${response.failureCount} failures`);
-        } catch (fcmError) {
-          console.error("Error sending FCM in processWebhookMessageService:", fcmError);
+          await sendPushToTokens(
+            fcmTokens.map((token: string) => String(token)),
+            {
+              title: isAmbiguousMessage ? "روشتة او صورة غير واضحة" : "رسالة أوردر جديدة",
+              body: message || "",
+            },
+            { type: String(messageType) },
+          );
+        } catch (pushError) {
+          console.error("Error sending webhook push notification:", pushError);
         }
       }
     }

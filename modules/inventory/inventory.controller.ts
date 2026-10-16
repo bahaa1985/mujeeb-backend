@@ -1,5 +1,5 @@
 import { prismaClient } from '../../utils/prisma-adapter';
-import { getInventoryCountByPharmacyId } from './inventory.service';
+import { getInventoryCountByPharmacyId, getInventoryPage } from './inventory.service';
 import { logAndNotify } from '../logs/log.service';
 
 // Extend Express Request type to include `user` set by authentication middleware
@@ -13,6 +13,7 @@ declare global {
 const serializeInventory=(inventory:any)=>{
   return{
     ...inventory,
+    id: inventory.id?.toString(),
     pharmacy_id: Number(inventory.pharmacy_id),
     price: inventory.price !== null ? parseFloat(String(inventory.price)) : null,
     units_count: inventory.units_count !== null ? parseFloat(String(inventory.units_count)) : null,
@@ -121,3 +122,37 @@ export const getInventoryCountController = async (req: any, res: any) => {
     res.status(500).json({ message: 'Error fetching inventory', error });
   }
 }
+
+export const getInventoryListController = async (req: any, res: any) => {
+  try {
+    const pharmacyId = Number(req.user?.pharmacy_id);
+    if (!Number.isInteger(pharmacyId) || pharmacyId <= 0) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const page = req.query.page === undefined ? 1 : Number(req.query.page);
+    const requestedLimit = req.query.limit === undefined ? 20 : Number(req.query.limit);
+    const stock = req.query.stock === undefined ? 'all' : String(req.query.stock);
+    if (!Number.isInteger(page) || page < 1 || !Number.isInteger(requestedLimit) || requestedLimit < 1) {
+      return res.status(400).json({ message: 'Page and limit must be positive integers' });
+    }
+    if (stock !== 'all' && stock !== 'in' && stock !== 'out') {
+      return res.status(400).json({ message: 'Stock filter must be all, in, or out' });
+    }
+
+    const result = await getInventoryPage(
+      pharmacyId,
+      page,
+      Math.min(requestedLimit, 100),
+      typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '',
+      stock,
+    );
+    return res.status(200).json({
+      ...result,
+      data: result.data.map(serializeInventory),
+    });
+  } catch (error) {
+    console.error('Error fetching inventory list:', error);
+    return res.status(500).json({ message: 'Error fetching inventory' });
+  }
+};

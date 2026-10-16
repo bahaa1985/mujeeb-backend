@@ -4,7 +4,11 @@ import jwt from 'jsonwebtoken'
 const JWT_SECRET = process.env.JWT_SECRET || 'pharmacy-dev-secret'
 
 export const authenticateToken = (req: any, res: any, next: any) => {
-    const token = req.cookies?.token || null
+    const authorization = req.headers?.authorization
+    const bearerToken = typeof authorization === 'string' && authorization.startsWith('Bearer ')
+        ? authorization.slice('Bearer '.length)
+        : null
+    const token = req.cookies?.token || bearerToken
     
     if (!token) {
         return res.status(401).json({ success: false, message: ' No token provided.' })
@@ -22,5 +26,4 @@ export const authenticateToken = (req: any, res: any, next: any) => {
         return res.status(401).json({ success: false, message: 'Invalid token.' })
     }
 }
-
 

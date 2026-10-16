@@ -68,8 +68,10 @@ const translations: Record<string, any> = {
     USER_LOGOUT: { title: "Logout Alert", body: "User {username} ({mobile}) signed out from {pharmacy}" },
     AI_MODE_TOGGLED: { title: "AI Mode Changed", body: "AI mode has been updated by {username} ({mobile}) at {pharmacy}" },
     SUBSCRIPTION_RENEWED: { title: "Subscription Renewed", body: "Pharmacy subscription renewed successfully" },
-    SUBSCRIPTION_SUSPENDED: { title: "Subscription Suspended", body: "Pharmacy subscription has been suspended" },
+    SUBSCRIPTION_SUSPENDED: { title: "Subscription Suspended", body: "Your subscription is suspended. Renew it to enable AI replies to customer messages." },
     ORDER_REQUEST: { title: "New Order", body: "New order request from {contactName} ({contactNumber}) has been received" },
+    AMBIGIUOS_MESSAGE: { title: "Unclear Prescription or Image", body: "An unclear prescription or image was received from {contactNumber}" },
+    AMBIGUOUS_MESSAGE: { title: "Unclear Prescription or Image", body: "An unclear prescription or image was received from {contactNumber}" },
     INVENTORY_UPDATED: { title: "Inventory Update", body: "Inventory has been updated by {username} at {pharmacy}" },
     CREATE_NEW_USER: { title: "Security Alert", body: "A new user {username} was created" },
     APP_ERROR: { title: "System Error", body: "An application error occurred: {details}" },
@@ -80,8 +82,10 @@ const translations: Record<string, any> = {
     USER_LOGOUT: { title: "تنبيه خروج", body: "قام المستخدم {username} ({mobile}) بتسجيل الخروج من {pharmacy}" },
     AI_MODE_TOGGLED: { title: "تغيير وضع الذكاء الاصطناعي", body: "تم تحديث وضع الرد الآلي بواسطة {username} ({mobile}) في {pharmacy}" },
     SUBSCRIPTION_RENEWED: { title: "تجديد الاشتراك", body: "تم تجديد اشتراك الصيدلية بنجاح" },
-    SUBSCRIPTION_SUSPENDED: { title: "إيقاف الاشتراك", body: "تم إيقاف اشتراك الصيدلية" },
+    SUBSCRIPTION_SUSPENDED: { title: "إيقاف الاشتراك", body: "اشتراك الصيدلية موقوف. يرجى تجديد الاشتراك لتفعيل رد الذكاء الاصطناعي على رسائل العملاء." },
     ORDER_REQUEST: { title: "طلب جديد", body: "تم استلام طلب جديد من {contactName} ({contactNumber})" },
+    AMBIGIUOS_MESSAGE: { title: "روشتة او صورة غير واضحة", body: "تم استلام روشتة أو صورة غير واضحة من {contactNumber}" },
+    AMBIGUOUS_MESSAGE: { title: "روشتة او صورة غير واضحة", body: "تم استلام روشتة أو صورة غير واضحة من {contactNumber}" },
     INVENTORY_UPDATED: { title: "تحديث المخزون", body: "تم تحديث المخزون بواسطة {username} في {pharmacy}" },
     CREATE_NEW_USER: { title: "تنبيه أمني", body: "تم إنشاء مستخدم جديد: {username}" },
     APP_ERROR: { title: "خطأ في النظام", body: "حدث خطأ في التطبيق: {details}" },
@@ -139,6 +143,11 @@ export const logAndNotify = async (params: {
       targetRoles = [TargetRole.USER]; // Role 3
       notification_type=NotificationType.ORDER_REQUEST
       break
+    case "AMBIGIUOS_MESSAGE":
+    case "AMBIGUOUS_MESSAGE":
+      targetRoles = [TargetRole.USER];
+      notification_type = NotificationType.AMBIGUOUS_MESSAGE;
+      break;
     case "INVENTORY_UPDATED":
       targetRoles = [TargetRole.ADMIN, TargetRole.USER];
       notification_type=NotificationType.INVENTORY_UPDATED

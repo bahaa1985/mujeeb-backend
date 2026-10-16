@@ -1,5 +1,5 @@
-import { messaging } from './firebase'; // مسار ملف تهيئة فايربيز من الخطوة 2
 import { prismaClient } from './prisma-adapter'; // مسار الداتابيز بتاعك
+import { sendPushToTokens } from './sendPushToTokens';
 
 // تأكد من استدعاء الـ Types الصحيحة اللي عملتها في Prisma
 import { NotificationType, TargetRole } from '@prisma/client'; 
@@ -44,28 +44,12 @@ export const sendPushNotification = async (params: SendNotificationParams) => {
       return { success: true, message: "Saved to DB, no FCM tokens found" };
     }
 
-    // 3. تجهيز رسالة Firebase
-    const message = {
-      notification: {
-        title,
-        body,
-      },
-      data: {
-        // Firebase بيشترط إن محتوى الـ data يكون نصوص (Strings) فقط
-        payload: data ? JSON.stringify(data) : "",
-        type: String(type),
-      },
-      tokens: user.fcm_token, // بنبعت لمصفوفة الأجهزة كلها مرة واحدة
-    };
-
-    console.log("message",message);
-    // 4. إرسال الإشعار عبر Firebase
-    const response = await messaging.sendEachForMulticast(message);
+    const response = await sendPushToTokens(user.fcm_token, { title, body }, {
+      payload: data ? JSON.stringify(data) : "",
+      type: String(type),
+    });
     
-    // طباعة النتيجة في السيرفر للمتابعة
-    console.log(`Notification sent: ${response.successCount} successes, ${response.failureCount} failures`);
-
-    return { success: true, firebaseResponse: response };
+    return { success: true, pushResponse: response };
 
   } catch (error) {
     console.error("Error in sendPushNotification:", error);

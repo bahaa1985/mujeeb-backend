@@ -222,7 +222,7 @@ export const checkOrderMessageController = async (req: any, res: any) => {
 export const handleWebhookController = async (req: any, res: any) => {
   const { type, table, record } = req.body;
   console.log("Webhook received:", { type, table, record });
-  if (type === 'INSERT' && table === 'messages' && Number(record?.message_type) === 11) {
+  if (type === 'INSERT' && table === 'messages' && [1, 2, 3, 11].includes(Number(record?.message_type))) {
     try {
       await processWebhookMessageService(record);
       res.status(200).json({ success: true });

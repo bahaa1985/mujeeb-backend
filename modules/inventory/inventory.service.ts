@@ -21,3 +21,46 @@ export const getInventoryCountByPharmacyId= async(pharmacyId:number)=>{
     throw error;
     }
 }
+
+export const getInventoryPage = async (
+    pharmacyId: number,
+    page: number,
+    limit: number,
+    search: string,
+    stock: "in" | "out" | "all",
+) => {
+    const where = {
+        pharmacy_id: pharmacyId,
+        ...(search
+            ? {
+                OR: [
+                    { en_name: { contains: search, mode: "insensitive" as const } },
+                    { ar_name: { contains: search, mode: "insensitive" as const } },
+                    { active_material: { contains: search, mode: "insensitive" as const } },
+                ],
+            }
+            : {}),
+        ...(stock === "in" ? { quantity: { gt: 0 } } : {}),
+        ...(stock === "out" ? { quantity: { lte: 0 } } : {}),
+    };
+    const skip = (page - 1) * limit;
+    const [items, total] = await Promise.all([
+        prismaClient.inventory.findMany({
+            where,
+            orderBy: [{ en_name: "asc" }, { ar_name: "asc" }],
+            skip,
+            take: limit,
+        }),
+        prismaClient.inventory.count({ where }),
+    ]);
+
+    return {
+        data: items,
+        meta: {
+            total,
+            page,
+            limit,
+            lastPage: Math.max(1, Math.ceil(total / limit)),
+        },
+    };
+};
