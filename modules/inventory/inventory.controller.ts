@@ -1,5 +1,5 @@
 import { prismaClient } from '../../utils/prisma-adapter';
-import { getInventoryCountByPharmacyId, getInventoryPage } from './inventory.service';
+import { getInventoryCountByPharmacyId, getInventoryPage, updateInventoryItem, type InventoryUpdateData } from './inventory.service';
 import { logAndNotify } from '../logs/log.service';
 
 // Extend Express Request type to include `user` set by authentication middleware
@@ -53,7 +53,9 @@ export const uploadInventory = async (req: any, res: any) => {
         const en_name = (r.en_name ?? r.e_name ?? null) as string | null;
         const price = r.price !== undefined && r.price !== null && r.price !== '' ? parseFloat(String(r.price)) : null;
         const units_count = r.units_count !== undefined && r.units_count !== null && r.units_count !== '' ? parseFloat(String(r.units_count)) : null;
-        const quantity = r.quantity !== undefined && r.quantity !== null && r.quantity !== '' ? parseFloat(String(r.quantity)) : null;
+        const parsedQuantity = r.quantity !== undefined && r.quantity !== null && r.quantity !== ''
+          ? parseFloat(String(r.quantity))
+          : null;
         const active = r.active ?? r.active_material ?? null;
         const drug_type = r.drug_type ?? r.type ?? r.unit ?? null;
         const dosage_form = r.dosage_form ?? null;
@@ -64,7 +66,7 @@ export const uploadInventory = async (req: any, res: any) => {
           en_name: en_name ? String(en_name) : null,
           price: price === null ? null : price,
           units_count: units_count === null ? null : units_count,
-          quantity: quantity === null ? null : quantity,
+          quantity: parsedQuantity !== null && Number.isFinite(parsedQuantity) && parsedQuantity > 0 ? 1 : 0,
           active_material: active ? String(active) : null,
           dosage_form: dosage_form ? String(dosage_form) : null,
           drug_type: drug_type ? String(drug_type) : null,
@@ -154,5 +156,107 @@ export const getInventoryListController = async (req: any, res: any) => {
   } catch (error) {
     console.error('Error fetching inventory list:', error);
     return res.status(500).json({ message: 'Error fetching inventory' });
+  }
+};
+
+const inventoryUpdateFields = [
+  'en_name',
+  'ar_name',
+  'price',
+  'units_count',
+  'dosage_form',
+  'drug_type',
+  'active_material',
+  'quantity',
+] as const;
+
+export const updateInventoryItemController = async (req: any, res: any) => {
+  const pharmacyId = Number(req.user?.pharmacy_id);
+  if (!Number.isInteger(pharmacyId) || pharmacyId <= 0) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  const idText = String(req.params.id ?? '');
+  if (!/^\d{1,19}$/.test(idText)) {
+    return res.status(400).json({ message: 'Inventory item id must be a positive integer' });
+  }
+  const inventoryId = BigInt(idText);
+  if (inventoryId <= 0n || inventoryId > 9223372036854775807n) {
+    return res.status(400).json({ message: 'Inventory item id must be a positive integer' });
+  }
+
+  const body = req.body;
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return res.status(400).json({ message: 'A valid inventory update body is required' });
+  }
+
+  const unsupportedFields = Object.keys(body).filter(
+    (field) => !inventoryUpdateFields.includes(field as typeof inventoryUpdateFields[number]),
+  );
+  if (unsupportedFields.length) {
+    return res.status(400).json({
+      message: `Unsupported or immutable inventory fields: ${unsupportedFields.join(', ')}`,
+    });
+  }
+
+  const updates: InventoryUpdateData = {};
+  for (const field of inventoryUpdateFields) {
+    if (!Object.prototype.hasOwnProperty.call(body, field)) continue;
+    const value = body[field];
+
+    if (field === 'price' || field === 'units_count') {
+      if (value !== null && (typeof value !== 'number' || !Number.isFinite(value))) {
+        return res.status(400).json({ message: `${field} must be a finite number or null` });
+      }
+      updates[field] = value;
+      continue;
+    }
+
+    if (field === 'quantity') {
+      if (value !== 0 && value !== 1) {
+        return res.status(400).json({ message: 'quantity must be 1 (available) or 0 (not available)' });
+      }
+      updates.quantity = value;
+      continue;
+    }
+
+    if (value !== null && typeof value !== 'string') {
+      return res.status(400).json({ message: `${field} must be a string or null` });
+    }
+    updates[field] = value === null ? null : value.trim() || null;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ message: 'At least one editable inventory field is required' });
+  }
+
+  try {
+    const updatedInventory = await updateInventoryItem(inventoryId, pharmacyId, updates);
+    if (!updatedInventory) {
+      return res.status(404).json({ message: 'Inventory item not found' });
+    }
+
+    logAndNotify({
+      userId: req.user?.id,
+      pharmacyId,
+      action: 'INVENTORY_UPDATED',
+      username: req.user?.username || 'System',
+      metadata: { count: 1, inventoryId: idText, updatedFields: Object.keys(updates) },
+    }).catch((error) => console.error(error));
+
+    return res.status(200).json({
+      success: true,
+      message: 'Inventory item updated successfully',
+      data: serializeInventory(updatedInventory),
+    });
+  } catch (error) {
+    console.error('Error updating inventory item:', error);
+    logAndNotify({
+      userId: req.user?.id,
+      pharmacyId,
+      action: 'APP_ERROR',
+      metadata: { error: error instanceof Error ? error.message : String(error), context: 'updateInventoryItem' },
+    }).catch((logError) => console.error(logError));
+    return res.status(500).json({ message: 'Failed to update inventory item' });
   }
 };

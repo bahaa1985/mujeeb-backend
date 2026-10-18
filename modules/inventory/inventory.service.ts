@@ -1,6 +1,16 @@
-import { PrismaClient } from "@prisma/client/extension";
 import { prismaClient } from "../../utils/prisma-adapter";
 import { logAndNotify } from "../logs/log.service";
+
+export type InventoryUpdateData = {
+    en_name?: string | null;
+    ar_name?: string | null;
+    price?: number | null;
+    units_count?: number | null;
+    dosage_form?: string | null;
+    drug_type?: string | null;
+    active_material?: string | null;
+    quantity?: number;
+};
 
 export const getInventoryCountByPharmacyId= async(pharmacyId:number)=>{
     try{
@@ -63,4 +73,21 @@ export const getInventoryPage = async (
             lastPage: Math.max(1, Math.ceil(total / limit)),
         },
     };
+};
+
+export const updateInventoryItem = async (
+    id: bigint,
+    pharmacyId: number,
+    data: InventoryUpdateData,
+) => {
+    const item = await prismaClient.inventory.findFirst({
+        where: { id, pharmacy_id: pharmacyId },
+        select: { id: true },
+    });
+    if (!item) return null;
+
+    return prismaClient.inventory.update({
+        where: { id: item.id },
+        data,
+    });
 };

@@ -6,6 +6,9 @@ interface PushContent {
   body: string;
 }
 
+const ANDROID_NOTIFICATION_CHANNEL = "notifications_v3";
+const NOTIFICATION_SOUND = "notification_sound.mp3";
+
 export const sendPushToTokens = async (
   tokens: string[],
   notification: PushContent,
@@ -20,6 +23,18 @@ export const sendPushToTokens = async (
       notification,
       data,
       tokens: fcmTokens,
+      android: {
+        notification: {
+          channelId: ANDROID_NOTIFICATION_CHANNEL,
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: NOTIFICATION_SOUND,
+          },
+        },
+      },
     }));
   }
 
@@ -29,6 +44,8 @@ export const sendPushToTokens = async (
       title: notification.title,
       body: notification.body,
       data,
+      channelId: ANDROID_NOTIFICATION_CHANNEL,
+      sound: NOTIFICATION_SOUND,
     }));
     const response = await axios.post<{ data: { status: string; message?: string }[] }>(
       "https://exp.host/--/api/v2/push/send",

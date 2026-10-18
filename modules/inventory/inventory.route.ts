@@ -1,7 +1,7 @@
 import { Router } from 'express';
 // import multer from 'multer';
 // import * as XLSX from 'xlsx';
-import { getInventoryCountController, getInventoryListController, uploadInventory } from './inventory.controller';
+import { getInventoryCountController, getInventoryListController, updateInventoryItemController, uploadInventory } from './inventory.controller';
 import { authenticateToken } from '../../middleware/authenticateToken';
 import { rateLimit } from 'express-rate-limit';
 
@@ -24,6 +24,7 @@ const uploadRateLimiter = rateLimit({
 // router.post('/upload', upload.single('file'), inventoryController.uploadInventory);
 INVENTORY_ROUTER.post('/upload', uploadRateLimiter, uploadInventory);
 INVENTORY_ROUTER.get('/', getInventoryListController);
+INVENTORY_ROUTER.patch('/update/:id', updateInventoryItemController);
 INVENTORY_ROUTER.get('/pharmacy', getInventoryCountController);
 INVENTORY_ROUTER.get('/pharmacy/:pharmacyId',getInventoryCountController);
 
