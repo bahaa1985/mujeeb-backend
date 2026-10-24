@@ -70,7 +70,7 @@ const translations: Record<string, any> = {
     SUBSCRIPTION_RENEWED: { title: "Subscription Renewed", body: "Pharmacy subscription renewed successfully" },
     SUBSCRIPTION_SUSPENDED: { title: "Subscription Suspended", body: "Your subscription is suspended. Renew it to enable AI replies to customer messages." },
     ORDER_REQUEST: { title: "New Order", body: "New order request from {contactName} ({contactNumber}) has been received" },
-    AMBIGIUOS_MESSAGE: { title: "Unclear Prescription or Image", body: "An unclear prescription or image was received from {contactNumber}" },
+    AMBIGIUOS_MESSAGE: { title: "Unclear Prescription or Image", body: "An unclear prescription or image was received from {contactName} {contactNumber}" },
     AMBIGUOUS_MESSAGE: { title: "Unclear Prescription or Image", body: "An unclear prescription or image was received from {contactNumber}" },
     INVENTORY_UPDATED: { title: "Inventory Update", body: "Inventory has been updated by {username} at {pharmacy}" },
     CREATE_NEW_USER: { title: "Security Alert", body: "A new user {username} was created" },
@@ -140,12 +140,12 @@ export const logAndNotify = async (params: {
       notification_type=NotificationType.SUBSCRIPTION_SUSPENDED
       break;
     case "ORDER_REQUEST":
-      targetRoles = [TargetRole.USER]; // Role 3
+      targetRoles = [TargetRole.ADMIN, TargetRole.USER];
       notification_type=NotificationType.ORDER_REQUEST
       break
     case "AMBIGIUOS_MESSAGE":
     case "AMBIGUOUS_MESSAGE":
-      targetRoles = [TargetRole.USER];
+      targetRoles = [TargetRole.ADMIN, TargetRole.USER];
       notification_type = NotificationType.AMBIGUOUS_MESSAGE;
       break;
     case "INVENTORY_UPDATED":
@@ -189,8 +189,8 @@ export const logAndNotify = async (params: {
     .replace('{username}', notificationUsername)
     .replace('{mobile}', notificationMobile)
     .replace('{pharmacy}', notificationPharmacy)
-    .replace('{contactName}', metadata?.contact_name || metadata?.from || '')
-    .replace('{contactNumber}', metadata?.contact_number || metadata?.from || '')
+    .replace('{contactName}', metadata?.contactName || metadata?.contact_name || metadata?.from || '')
+    .replace('{contactNumber}', metadata?.contactNumber || metadata?.contact_number || metadata?.from_number || metadata?.from || '')
     .replace('{details}', typeof metadata === 'string' ? metadata : JSON.stringify(metadata));
 
   for (const role of targetRoles) {

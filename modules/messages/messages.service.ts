@@ -1,8 +1,6 @@
 import { prismaClient } from "../../utils/prisma-adapter";
 import {sendTextMessage} from "./evolutionSendTextMessage"
 import { logAndNotify } from "../logs/log.service";
-import { sendPushToTokens } from "../../utils/sendPushToTokens";
-import { NotificationType, TargetRole } from "@prisma/client";
 
 export const getMessagesByPharmacyIdService = async (
   pharmacyId: number,
@@ -196,27 +194,27 @@ export const createMessageService = async ({
     });
 
     // Check if message_type is 11 (Order Request)
-    if (Number(message_type) === 11) {
-      const contact = await prismaClient.contacts.findFirst({
-        where: {
-          contact_mobile: fromNumber,
-          users: { is: { pharmacy_id: pharmacyId } },
-        },
-        select: { contact_name: true, contact_mobile: true }
-      });
+    // if (Number(message_type) === 11) {
+    //   const contact = await prismaClient.contacts.findFirst({
+    //     where: {
+    //       contact_mobile: fromNumber,
+    //       users: { is: { pharmacy_id: pharmacyId } },
+    //     },
+    //     select: { contact_name: true, contact_mobile: true }
+    //   });
 
-      logAndNotify({
-        userId: 0, // System or associated user
-        pharmacyId: pharmacyId,
-        action: "ORDER_REQUEST",
-        metadata: {
-          from: fromNumber,
-          message,
-          contact_name: contact?.contact_name || fromNumber,
-          contact_number: contact?.contact_mobile || fromNumber
-        }
-      }).catch(e => console.error("Error in logAndNotify for ORDER_REQUEST:", e));
-    }
+    //   logAndNotify({
+    //     userId: 0, // System or associated user
+    //     pharmacyId: pharmacyId,
+    //     action: "ORDER_REQUEST",
+    //     metadata: {
+    //       contactNumber: fromNumber,
+    //       message,
+    //       contactName: contact?.contact_name || fromNumber,
+    //       contactNumber: contact?.contact_mobile || fromNumber
+    //     }
+    //   }).catch(e => console.error("Error in logAndNotify for ORDER_REQUEST:", e));
+    // }
 
     return newMessage;
   } catch (error: any) {
@@ -274,58 +272,73 @@ export const deleteMessageService = async (id: bigint, pharmacyId: number | unde
 
 export const checkOrderMessageService = async ({
   pharmacyId,
-  fromNumber,
+  contactNumber,
   message,
 }: {
   pharmacyId: number;
-  fromNumber: string;
+  contactNumber: string;
   message?: string;
 }) => {
-  try {
-    await logAndNotify({
-      userId: 0,
-      pharmacyId: pharmacyId,
-      action: "ORDER_REQUEST",
-      metadata: { from: fromNumber, message: message || "New Order Request" },
-    });
-    return { success: true };
-  } catch (error: any) {
-    // console.error("Error in checkOrderMessageService:", error);
-    throw error;
-  }
+  const contact = await prismaClient.contacts.findFirst({
+    where: {
+      contact_mobile: contactNumber,
+      users: { is: { pharmacy_id: pharmacyId } },
+    },
+    select: { contact_name: true, contact_mobile: true },
+  });
+  const resolvedContactNumber = contact?.contact_mobile || contactNumber;
+  await logAndNotify({
+    userId: 0,
+    pharmacyId,
+    action: "ORDER_REQUEST",
+    metadata: {
+      contactNumber: resolvedContactNumber,
+      from_number: resolvedContactNumber,
+      contactName: contact?.contact_name || resolvedContactNumber,
+      message: message || "New Order Request",
+    },
+  });
+  return { success: true };
 };
 
 export const checkAmbigiousMessageService = async ({
   pharmacyId,
-  fromNumber,
+  contactNumber,
   message,
 }: {
   pharmacyId: number;
-  fromNumber: string;
+  contactNumber: string;
   message?: string;
 }) => {
-  try {
-    await logAndNotify({
-      userId: 0,
-      pharmacyId: pharmacyId,
-      action: "AMBIGIUOS_MESSAGE",
-      metadata: { from: fromNumber, message: message || "New Ambiguous Message" },
-    });
-    return { success: true };
-  } catch (error: any) {
-    // console.error("Error in checkAmbigiousMessageService:", error);
-    throw error;
-  }
+  const contact = await prismaClient.contacts.findFirst({
+    where: {
+      contact_mobile: contactNumber,
+      users: { is: { pharmacy_id: pharmacyId } },
+    },
+    select: { contact_name: true, contact_mobile: true },
+  });
+  const resolvedContactNumber = contact?.contact_mobile || contactNumber;
+  await logAndNotify({
+    userId: 0,
+    pharmacyId,
+    action: "AMBIGIUOS_MESSAGE",
+    metadata: {
+      contactNumber: resolvedContactNumber,
+      from_number: resolvedContactNumber,
+      contactName: contact?.contact_name || resolvedContactNumber,
+      message: message || "New Ambiguous Message",
+    },
+  });
+  return { success: true };
 };
 
 export const processWebhookMessageService = async (record: any) => {
   try {
-    const { pharmacy_id, message, to_number } = record;
+    const pharmacyId = Number(record.pharmacy_id);
     const messageType = Number(record.message_type);
-// console.log("processWebhookMessageService fired with record:", record);
-    if ([1, 2, 3, 11].includes(messageType) && Number.isInteger(Number(pharmacy_id)) && Number(pharmacy_id) > 0) {
+    if ([1, 2, 3, 11, 13].includes(messageType) && Number.isInteger(pharmacyId) && pharmacyId > 0) {
       const subscription = await prismaClient.subscriptions.findFirst({
-        where: { pharmacy_id: Number(pharmacy_id) },
+        where: { pharmacy_id: pharmacyId },
         orderBy: [{ subscription_start: "desc" }, { id: "desc" }],
         select: { id: true, subscription_state: true },
       });
@@ -333,7 +346,7 @@ export const processWebhookMessageService = async (record: any) => {
       if (subscription?.subscription_state === "SUSPENDED") {
         await logAndNotify({
           userId: 0,
-          pharmacyId: Number(pharmacy_id),
+          pharmacyId,
           action: "SUBSCRIPTION_SUSPENDED",
           metadata: {
             subscription_id: subscription.id,
@@ -342,52 +355,25 @@ export const processWebhookMessageService = async (record: any) => {
         });
       }
     }
+    if (messageType !== 11 && messageType !== 13) return;
 
-    // Check if the message is an order request (message_type == 11)
-    // Even if we process all messages, maybe we only want to notify for order request?
-    // Based on the prompt: "process FCM notifications for order messages based on the attached files."
-    // Let's assume order messages have message_type = 11, or maybe we just process any message from webhook?
-    // Wait, let's see. The prompt says "notifications for order messages", but then "Title: 'رسالة أوردر جديدة'". Let's just follow the steps exactly.
-    // The instructions say: "Find the target user by matching to_number against users.mobile"
-    // So the incoming message is TO a number. Wait, if it's an incoming message, it should be FROM someone TO the system/pharmacy.
-    // The prompt explicitly states: "Find the target user by matching to_number against users.mobile"
+    const contactNumber = String(record.from_number ?? "").trim();
+    if (!Number.isInteger(pharmacyId) || pharmacyId <= 0) {
+      throw new Error("A valid pharmacy_id is required to send a message notification.");
+    }
+    if (!contactNumber) {
+      throw new Error("from_number is required to include the customer's contact number in the notification.");
+    }
 
-    const targetUser = await prismaClient.users.findUnique({
-      where: { mobile: to_number },
-    });
-
-    if (targetUser && targetUser.is_active && targetUser.fcm_token && targetUser.fcm_token.length > 0 && (messageType === 11 || messageType === 13)) {
-      const fcmTokens = Array.isArray(targetUser.fcm_token) ? targetUser.fcm_token : [];
-
-      if (fcmTokens.length > 0) {
-        const isAmbiguousMessage = messageType === 13;
-        const notificationTitle = isAmbiguousMessage ? "روشتة او صورة غير واضحة" : "رسالة جديدة";
-
-        // Create an internal notification record in the database
-        await prismaClient.notification.create({
-          data: {
-            user_id: targetUser.id,
-            pharmacy_id: targetUser.pharmacy_id,
-            type: isAmbiguousMessage ? NotificationType.AMBIGUOUS_MESSAGE : NotificationType.ORDER_REQUEST,
-            target_role: TargetRole.USER,
-            title: notificationTitle,
-            body: message || "",
-          }
-        });
-
-        try {
-          await sendPushToTokens(
-            fcmTokens.map((token: string) => String(token)),
-            {
-              title: isAmbiguousMessage ? "روشتة او صورة غير واضحة" : "رسالة أوردر جديدة",
-              body: message || "",
-            },
-            { type: String(messageType) },
-          );
-        } catch (pushError) {
-          console.error("Error sending webhook push notification:", pushError);
-        }
-      }
+    const notificationParams = {
+      pharmacyId,
+      contactNumber,
+      message: typeof record.message === "string" ? record.message : undefined,
+    };
+    if (messageType === 13) {
+      await checkAmbigiousMessageService(notificationParams);
+    } else {
+      await checkOrderMessageService(notificationParams);
     }
   } catch (error: any) {
     console.error("Error in processWebhookMessageService:", error);

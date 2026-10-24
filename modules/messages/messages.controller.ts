@@ -8,7 +8,6 @@ import {
   getOrderMessageCountByUserMobileService,
   getOrderMessageCountByPharmacyService,
   updateMessageService,
-  checkOrderMessageService,
   processWebhookMessageService,
 } from "./messages.service";
 import { prismaClient } from "../../utils/prisma-adapter";
@@ -199,30 +198,10 @@ export const deleteMessageController = async (req: any, res: any) => {
   }
 };
 
-export const checkOrderMessageController = async (req: any, res: any) => {
-  const { fromNumber, message } = req.body;
-  const pharmacyId = Number(req.user?.role_id) === 1
-    ? Number(req.body.pharmacyId || req.user?.pharmacy_id)
-    : Number(req.user?.pharmacy_id);
-  if (!pharmacyId || !fromNumber) {
-    return res.status(400).json({ message: "fromNumber is required" });
-  }
-  try {
-    const result = await checkOrderMessageService({
-      pharmacyId: pharmacyId,
-      fromNumber,
-      message,
-    });
-    res.status(200).json(result);
-  } catch (error) {
-    res.status(500).json({ message: "Error checking order message", error });
-  }
-};
-
 export const handleWebhookController = async (req: any, res: any) => {
   const { type, table, record } = req.body;
   console.log("Webhook received:", { type, table, record });
-  if (type === 'INSERT' && table === 'messages' && [1, 2, 3, 11].includes(Number(record?.message_type))) {
+  if (type === 'INSERT' && table === 'messages' && [1, 2, 3, 11,13].includes(Number(record?.message_type))) {
     try {
       await processWebhookMessageService(record);
       res.status(200).json({ success: true });

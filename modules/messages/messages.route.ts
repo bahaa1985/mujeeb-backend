@@ -9,7 +9,6 @@ import {
   getOrderMessageCountByUserMobileController,
   getOrderMessageCountByPharmacyController,
   updateMessageController,
-  checkOrderMessageController,
   handleWebhookController,
 } from "./messages.controller";
 
@@ -29,7 +28,6 @@ MESSAGES_ROUTER.get('/count/pharmacy/:pharmacyId', getPharmacyMessagesCountContr
 MESSAGES_ROUTER.get('/orders/count/user/:mobile', getOrderMessageCountByUserMobileController);
 MESSAGES_ROUTER.get('/orders/count/pharmacy/:pharmacyId', getOrderMessageCountByPharmacyController);
 MESSAGES_ROUTER.post('/new', createMessageController);
-MESSAGES_ROUTER.post('/order-message', checkOrderMessageController);
 MESSAGES_ROUTER.patch('/:id', updateMessageController);
 
 MESSAGES_ROUTER.delete('/:id', deleteMessageController);
